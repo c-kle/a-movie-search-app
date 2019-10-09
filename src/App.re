@@ -2,14 +2,12 @@ Utils.requireCSS("./App.css");
 
 type state = {
   isLoading: bool,
-  results: list(MovieData.movie),
-  errorMessage: string,
+  result: (option(list(MovieData.movie)), option(string)),
 };
 
 type action =
   | Search
-  | SearchSuccess(list(MovieData.movie))
-  | SearchFailure(string);
+  | SearchDone((option(list(MovieData.movie)), option(string)));
 
 [@react.component]
 let make = () => {
@@ -18,28 +16,22 @@ let make = () => {
       (state, action) =>
         switch (action) {
         | Search => {...state, isLoading: true}
-        | SearchFailure(errorMessage) => {
+        | SearchDone(newResult) => {
             ...state,
             isLoading: false,
-            errorMessage,
-          }
-        | SearchSuccess(newResults) => {
-            ...state,
-            isLoading: false,
-            results: newResults,
+            result: newResult,
           }
         },
-      {errorMessage: "", isLoading: false, results: []},
+      {isLoading: false, result: (Some([]), None)},
     );
 
   let searchFunc = text => {
-    dispatch(Search);
+    Search |> dispatch;
     MovieData.Api.searchMovies(text)
-    |> Js.Promise.then_(results => {
-         dispatch(SearchSuccess(results));
+    |> Js.Promise.then_(result => {
+         SearchDone(result) |> dispatch;
          Js.Promise.resolve();
        })
-    |> Js.Promise.catch(message => SearchFailure(message) |> dispatch)
     |> ignore;
   };
 
@@ -52,12 +44,21 @@ let make = () => {
     <div className="movies">
       {state.isLoading
          ? ReasonReact.string("Loading...")
-         : state.results
-           |> Array.of_list
-           |> Array.map((movie: MovieData.movie) =>
-                <Movie key={movie.id} movie />
-              )
-           |> ReasonReact.array}
+         : (
+           switch (state.result) {
+           | (Some(movies), None) =>
+             movies
+             |> Array.of_list
+             |> Array.mapi((index: int, movie: MovieData.movie) =>
+                  <Movie key={movie.id ++ string_of_int(index)} movie />
+                )
+             |> ReasonReact.array
+           | (None, Some(errorMessage)) =>
+             <div className="errorMessage">
+               {ReasonReact.string(errorMessage)}
+             </div>
+           }
+         )}
     </div>
   </div>;
 };

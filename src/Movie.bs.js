@@ -2,6 +2,18 @@
 'use strict';
 
 var React = require("react");
+var Belt_Option = require("bs-platform/lib/js/belt_Option.js");
+
+var defaultPlaceholderPoster = "https://m.media-amazon.com/images/G/01/imdb/images/nopicture/medium/film-3385785534._CB483791896_.png";
+
+function defaultPosterIfNA(posterUrl) {
+  var match = posterUrl === "N/A";
+  if (match) {
+    return defaultPlaceholderPoster;
+  } else {
+    return posterUrl;
+  }
+}
 
 function Movie(Props) {
   var movie = Props.movie;
@@ -9,12 +21,14 @@ function Movie(Props) {
               className: "movie"
             }, React.createElement("h2", undefined, movie[/* title */1]), React.createElement("div", undefined, React.createElement("img", {
                       alt: "The movie titled " + movie[/* title */1],
-                      src: movie[/* poster */2],
+                      src: defaultPosterIfNA(Belt_Option.getWithDefault(movie[/* poster */2], defaultPlaceholderPoster)),
                       width: "200"
                     })), React.createElement("p", undefined, movie[/* year */3]));
 }
 
 var make = Movie;
 
+exports.defaultPlaceholderPoster = defaultPlaceholderPoster;
+exports.defaultPosterIfNA = defaultPosterIfNA;
 exports.make = make;
 /* react Not a pure module */

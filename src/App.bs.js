@@ -4,6 +4,7 @@
 var $$Array = require("bs-platform/lib/js/array.js");
 var Curry = require("bs-platform/lib/js/curry.js");
 var React = require("react");
+var Caml_builtin_exceptions = require("bs-platform/lib/js/caml_builtin_exceptions.js");
 var Movie$ReactHooksTemplate = require("./Movie.bs.js");
 var Header$ReactHooksTemplate = require("./Header.bs.js");
 var Search$ReactHooksTemplate = require("./Search.bs.js");
@@ -16,32 +17,73 @@ function App(Props) {
           if (action) {
             return /* record */[
                     /* isLoading */false,
-                    /* results */action[0],
-                    /* errorMessage */state[/* errorMessage */2]
+                    /* result */action[0]
                   ];
           } else {
             return /* record */[
                     /* isLoading */true,
-                    /* results */state[/* results */1],
-                    /* errorMessage */state[/* errorMessage */2]
+                    /* result */state[/* result */1]
                   ];
           }
         }), /* record */[
         /* isLoading */false,
-        /* results : [] */0,
-        /* errorMessage */""
+        /* result : tuple */[
+          /* [] */0,
+          undefined
+        ]
       ]);
   var dispatch = match[1];
   var state = match[0];
   var searchFunc = function (text) {
     Curry._1(dispatch, /* Search */0);
-    MovieData$ReactHooksTemplate.Api[/* searchMovies */1](text).then((function (results) {
-            Curry._1(dispatch, /* SearchSuccess */[results]);
+    MovieData$ReactHooksTemplate.Api[/* searchMovies */1](text).then((function (result) {
+            Curry._1(dispatch, /* SearchDone */[result]);
             return Promise.resolve(/* () */0);
           }));
     return /* () */0;
   };
   var match$1 = state[/* isLoading */0];
+  var tmp;
+  if (match$1) {
+    tmp = "Loading...";
+  } else {
+    var match$2 = state[/* result */1];
+    var match$3 = match$2[0];
+    if (match$3 !== undefined) {
+      if (match$2[1] !== undefined) {
+        throw [
+              Caml_builtin_exceptions.match_failure,
+              /* tuple */[
+                "App.re",
+                47,
+                11
+              ]
+            ];
+      }
+      tmp = $$Array.mapi((function (index, movie) {
+              return React.createElement(Movie$ReactHooksTemplate.make, {
+                          movie: movie,
+                          key: movie[/* id */0] + String(index)
+                        });
+            }), $$Array.of_list(match$3));
+    } else {
+      var match$4 = match$2[1];
+      if (match$4 !== undefined) {
+        tmp = React.createElement("div", {
+              className: "errorMessage"
+            }, match$4);
+      } else {
+        throw [
+              Caml_builtin_exceptions.match_failure,
+              /* tuple */[
+                "App.re",
+                47,
+                11
+              ]
+            ];
+      }
+    }
+  }
   return React.createElement("div", {
               className: "App"
             }, React.createElement(Header$ReactHooksTemplate.make, {
@@ -52,12 +94,7 @@ function App(Props) {
                   className: "App-intro"
                 }, "Sharing a few of our favourite movies"), React.createElement("div", {
                   className: "movies"
-                }, match$1 ? "Loading..." : $$Array.map((function (movie) {
-                          return React.createElement(Movie$ReactHooksTemplate.make, {
-                                      movie: movie,
-                                      key: movie[/* id */0]
-                                    });
-                        }), $$Array.of_list(state[/* results */1]))));
+                }, tmp));
 }
 
 var make = App;

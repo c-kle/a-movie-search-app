@@ -1,4 +1,3 @@
-let defaultPlaceholderPoster = "https://m.media-amazon.com/images/M/MV5BMTczNTI2ODUwOF5BMl5BanBnXkFtZTcwMTU0NTIzMw@@._V1_SX300.jpg";
 let apiUrl = "http://www.omdbapi.com/?apikey=32cd990";
 
 let buildSearchUrl = text => apiUrl ++ "&s=" ++ text;
@@ -6,64 +5,32 @@ let buildSearchUrl = text => apiUrl ++ "&s=" ++ text;
 type movie = {
   id: string,
   title: string,
-  poster: string,
+  poster: option(string),
   year: string,
 };
 
-type searchMovieResponse = {
-  response: string,
-  errorMessage: option(string),
-  results: option(list(option(movie))),
-};
-
-let unwrapMovies = results =>
-  switch (results) {
-  | Some(movies) =>
-    movies
-    |> List.filter(optionalItem =>
-         switch (optionalItem) {
-         | Some(_) => true
-         | None => false
-         }
-       )
-    |> List.map(item =>
-         switch (item) {
-         | Some(item) => item
-         }
-       )
-  | None => []
-  };
-
-let unwrapError = error =>
-  switch (error) {
-  | Some(message) => message
-  | None => "Unknown error"
-  };
+type searchMovieResponse = (string, option(list(movie)), option(string));
 
 module Api = {
-  open Json.Decode;
-
-  let decodeResults = json => {
-    response: field("Response", string, json),
-    errorMessage: optional(field("Error", string), json),
-    results:
+  let decodeResults = json =>
+    Json.Decode.(
+      field("Response", string, json),
       optional(
         field(
           "Search",
-          list(
-            optional(json =>
-              {
-                id: field("imdbID", string, json),
-                title: field("Title", string, json),
-                poster: field("Poster", string, json),
-                year: field("Year", string, json),
-              }
-            ),
+          list(json =>
+            {
+              id: field("imdbID", string, json),
+              title: field("Title", string, json),
+              poster: optional(field("Poster", string), json),
+              year: field("Year", string, json),
+            }
           ),
         ),
         json,
       ),
-  };
+      optional(field("Error", string), json),
+    );
 
   let searchMovies = (text: string) =>
     Js.Promise.(
@@ -72,12 +39,23 @@ module Api = {
       |> Fetch.fetch
       |> then_(Fetch.Response.json)
       |> then_(json => decodeResults(json) |> resolve)
-      |> then_(({response, results, errorMessage}: searchMovieResponse) =>
-           if (response == "True") {
-             results |> unwrapMovies |> resolve;
-           } else {
-             errorMessage |> unwrapError |> Js.Exn.raiseError;
-           }
+      |> then_((response: searchMovieResponse) =>
+           (
+             switch (response) {
+             | ("True", Some(movies), None) => (Some(movies), None)
+             | (_, _, Some(errorMessage))
+                 when String.length(errorMessage) > 0 => (
+                 None,
+                 Some(errorMessage),
+               )
+             | _ => (None, Some("Unknown error"))
+             }
+           )
+           |> resolve
          )
+      |> catch(error => {
+           Js.log(error);
+           resolve((None, Some("Errooor...")));
+         })
     );
 };
